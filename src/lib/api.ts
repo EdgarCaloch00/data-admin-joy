@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://142.93.67.62/api';
+const API_BASE_URL = 'https://crepepos.shop/api';
 
 export interface LoginCredentials {
   email: string;
