@@ -5,7 +5,7 @@ import { DollarSign, ShoppingCart, Package, TrendingUp } from 'lucide-react';
 export default function Dashboard() {
   const stats = [
     {
-      title: 'Ventas Totales',
+      title: 'Ventas Totales.',
       value: '$44,150',
       change: '+20.1% vs mes anterior',
       icon: DollarSign,
