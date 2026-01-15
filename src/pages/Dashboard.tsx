@@ -84,21 +84,27 @@ export default function Dashboard() {
           <>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               {dashboardCards.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Card key={stat.title}>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {stat.title}
-                  </CardTitle>
-                  <Icon className="h-5 w-5 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{stat.value}</div>
-                  <p
-                    className={`mt-2 text-xs ${
-                      stat.positive ? 'text-success' : 'text-destructive'
-                    }`}
+                const Icon = stat.icon;
+                return (
+                  <Card key={stat.title}>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        {stat.title}
+                      </CardTitle>
+                      <Icon className="h-5 w-5 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold">{stat.value}</div>
+                      <p
+                        className={`mt-2 text-xs ${
+                          stat.positive ? 'text-success' : 'text-destructive'
+                        }`}
+                      >
+                        {stat.change}
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
               })}
             </div>
 
@@ -113,11 +119,7 @@ export default function Dashboard() {
                     {stats.salesByDay.map((value, i) => {
                       const maxValue = Math.max(...stats.salesByDay, 1);
                       return (
-              <CardTitle>Ventas por Día</CardTitle>
-              <p className="text-sm text-muted-foreground">Últimos 7 días</p>
-            </CardHeader>
-            <CardContent>
-              <div      <div key={i} className="flex flex-1 flex-col items-center gap-2">
+                        <div key={i} className="flex flex-1 flex-col items-center gap-2">
                           <div
                             className="w-full rounded-t-md bg-primary"
                             style={{ height: `${(value / maxValue) * 100}%` }}
@@ -127,6 +129,7 @@ export default function Dashboard() {
                           </span>
                         </div>
                       );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -139,14 +142,7 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     {stats.topProducts.length > 0 ? (
-                      stats.topProducts { name: 'Café Latte', sales: 856 },
-                  { name: 'Crepa Cajeta', sales: 743 },
-                  { name: 'Crepa Jamón y Queso', sales: 621 },
-                ].map((product, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{product.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {product.sales} vendidos
+                      stats.topProducts.map((product, i) => (
                         <div key={i} className="flex items-center justify-between">
                           <span className="text-sm font-medium">{product.name}</span>
                           <span className="text-sm text-muted-foreground">
@@ -154,6 +150,11 @@ export default function Dashboard() {
                           </span>
                         </div>
                       ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        No hay datos disponibles
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -163,8 +164,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-center py-12">
             <div className="text-muted-foreground">No se pudieron cargar las estadísticas</div>
           </div>
-        )}        </div>
-                    
+        )}
       </div>
     </Layout>
   );
