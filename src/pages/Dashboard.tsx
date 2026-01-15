@@ -1,38 +1,70 @@
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, ShoppingCart, Package, TrendingUp } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useBranch } from '@/contexts/BranchContext';
+
+interface DashboardStats {
+  totalSales: { value: string; change: string; positive: boolean };
+  orders: { value: number; change: string; positive: boolean };
+  productsSold: { value: number; change: string; positive: boolean };
+  avgTicket: { value: string; change: string; positive: boolean };
+  salesByDay: number[];
+  topProducts: { name: string; sales: number }[];
+}
 
 export default function Dashboard() {
-  const stats = [
+  const { selectedBranch } = useBranch();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardStats();
+  }, [selectedBranch]);
+
+  const loadDashboardStats = async () => {
+    try {
+      setLoading(true);
+      const data = await api.getDashboardStats(selectedBranch?.id);
+      setStats(data);
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const dashboardCards = stats ? [
     {
-      title: 'Ventas Totales.',
-      value: '$44,150',
-      change: '+20.1% vs mes anterior',
+      title: 'Ventas Totales',
+      value: `$${stats.totalSales.value}`,
+      change: `${stats.totalSales.positive ? '+' : ''}${stats.totalSales.change}% vs mes anterior`,
       icon: DollarSign,
-      positive: true,
+      positive: stats.totalSales.positive,
     },
     {
       title: 'Órdenes',
-      value: '441',
-      change: '+15.3% vs mes anterior',
+      value: stats.orders.value.toString(),
+      change: `${stats.orders.positive ? '+' : ''}${stats.orders.change}% vs mes anterior`,
       icon: ShoppingCart,
-      positive: true,
+      positive: stats.orders.positive,
     },
     {
       title: 'Productos Vendidos',
-      value: '1,234',
-      change: '+12.5% vs mes anterior',
+      value: stats.productsSold.value.toLocaleString(),
+      change: `${stats.productsSold.positive ? '+' : ''}${stats.productsSold.change}% vs mes anterior`,
       icon: Package,
-      positive: true,
+      positive: stats.productsSold.positive,
     },
     {
       title: 'Ticket Promedio',
-      value: '$100.11',
-      change: '+4.2% vs mes anterior',
+      value: `$${stats.avgTicket.value}`,
+      change: `${stats.avgTicket.positive ? '+' : ''}${stats.avgTicket.change}% vs mes anterior`,
       icon: TrendingUp,
-      positive: true,
+      positive: stats.avgTicket.positive,
     },
-  ];
+  ] : [];
 
   return (
     <Layout>
@@ -44,8 +76,14 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => {
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-muted-foreground">Cargando estadísticas...</div>
+          </div>
+        ) : stats ? (
+          <>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {dashboardCards.map((stat) => {
             const Icon = stat.icon;
             return (
               <Card key={stat.title}>
@@ -61,49 +99,47 @@ export default function Dashboard() {
                     className={`mt-2 text-xs ${
                       stat.positive ? 'text-success' : 'text-destructive'
                     }`}
-                  >
-                    {stat.change}
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+              })}
+            </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
+            <div className="mt-8 grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Ventas por Día</CardTitle>
+                  <p className="text-sm text-muted-foreground">Últimos 7 días</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex h-64 items-end justify-between gap-2">
+                    {stats.salesByDay.map((value, i) => {
+                      const maxValue = Math.max(...stats.salesByDay, 1);
+                      return (
               <CardTitle>Ventas por Día</CardTitle>
               <p className="text-sm text-muted-foreground">Últimos 7 días</p>
             </CardHeader>
             <CardContent>
-              <div className="flex h-64 items-end justify-between gap-2">
-                {[6200, 7800, 5400, 8900, 7200, 6800, 9100].map((value, i) => (
-                  <div key={i} className="flex flex-1 flex-col items-center gap-2">
-                    <div
-                      className="w-full rounded-t-md bg-primary"
-                      style={{ height: `${(value / 10000) * 100}%` }}
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      {['L', 'M', 'M', 'J', 'V', 'S', 'D'][i]}
-                    </span>
+              <div      <div key={i} className="flex flex-1 flex-col items-center gap-2">
+                          <div
+                            className="w-full rounded-t-md bg-primary"
+                            style={{ height: `${(value / maxValue) * 100}%` }}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {['L', 'M', 'M', 'J', 'V', 'S', 'D'][i]}
+                          </span>
+                        </div>
+                      );
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Productos Más Vendidos</CardTitle>
-              <p className="text-sm text-muted-foreground">Top 5 de la semana</p>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { name: 'Crepa Nutella', sales: 1234 },
-                  { name: 'Crepa Fresa', sales: 987 },
-                  { name: 'Café Latte', sales: 856 },
+              <Card>
+                <CardHeader>
+                  <CardTitle>Productos Más Vendidos</CardTitle>
+                  <p className="text-sm text-muted-foreground">Top 5 de la semana</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {stats.topProducts.length > 0 ? (
+                      stats.topProducts { name: 'Café Latte', sales: 856 },
                   { name: 'Crepa Cajeta', sales: 743 },
                   { name: 'Crepa Jamón y Queso', sales: 621 },
                 ].map((product, i) => (
@@ -111,13 +147,24 @@ export default function Dashboard() {
                     <span className="text-sm font-medium">{product.name}</span>
                     <span className="text-sm text-muted-foreground">
                       {product.sales} vendidos
-                    </span>
+                        <div key={i} className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{product.name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {product.sales} vendidos
+                          </span>
+                        </div>
+                      ))
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-muted-foreground">No se pudieron cargar las estadísticas</div>
+          </div>
+        )}        </div>
+                    
       </div>
     </Layout>
   );

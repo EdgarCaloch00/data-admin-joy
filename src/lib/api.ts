@@ -300,8 +300,9 @@ class ApiService {
     return this.request('/sale/all');
   }
 
-  async getDashboardStats() {
-    return this.request('/dashboard/stats');
+  async getDashboardStats(branchId?: string) {
+    const params = branchId ? `?branch_id=${branchId}` : '';
+    return this.request(`/dashboard/stats${params}`);
   }
 
    async deleteSale(id: string) {
