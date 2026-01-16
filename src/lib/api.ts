@@ -300,9 +300,13 @@ class ApiService {
     return this.request('/sale/all');
   }
 
-  async getDashboardStats(branchId?: string) {
-    const params = branchId ? `?branch_id=${branchId}` : '';
-    return this.request(`/dashboard/stats${params}`);
+  async getDashboardStats(branchId?: string, date?: string, hour?: string) {
+    const params = new URLSearchParams();
+    if (branchId) params.append('branch_id', branchId);
+    if (date) params.append('date', date);
+    if (hour) params.append('hour', hour);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/dashboard/stats${queryString}`);
   }
 
    async deleteSale(id: string) {

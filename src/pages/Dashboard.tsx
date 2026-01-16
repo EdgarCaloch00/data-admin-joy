@@ -10,7 +10,6 @@ interface DashboardStats {
   orders: { value: number; change: string; positive: boolean };
   productsSold: { value: number; change: string; positive: boolean };
   avgTicket: { value: string; change: string; positive: boolean };
-  salesByDay: number[];
   topProducts: { name: string; sales: number }[];
 }
 
@@ -18,15 +17,17 @@ export default function Dashboard() {
   const { selectedBranch } = useBranch();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [filterDate, setFilterDate] = useState<string>('');
+  const [filterHour, setFilterHour] = useState<string>('');
 
   useEffect(() => {
     loadDashboardStats();
-  }, [selectedBranch]);
+  }, [selectedBranch, filterDate, filterHour]);
 
   const loadDashboardStats = async () => {
     try {
       setLoading(true);
-      const data = await api.getDashboardStats(selectedBranch?.id);
+      const data = await api.getDashboardStats(selectedBranch?.id, filterDate, filterHour);
       setStats(data);
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -35,32 +36,38 @@ export default function Dashboard() {
     }
   };
 
+  const getComparisonText = () => {
+    if (filterDate && filterHour) return 'vs hora anterior';
+    if (filterDate) return 'vs día anterior';
+    return 'vs mes anterior';
+  };
+
   const dashboardCards = stats ? [
     {
       title: 'Ventas Totales',
       value: `$${stats.totalSales.value}`,
-      change: `${stats.totalSales.positive ? '+' : ''}${stats.totalSales.change}% vs mes anterior`,
+      change: `${stats.totalSales.positive ? '+' : ''}${stats.totalSales.change}% ${getComparisonText()}`,
       icon: DollarSign,
       positive: stats.totalSales.positive,
     },
     {
       title: 'Órdenes',
       value: stats.orders.value.toString(),
-      change: `${stats.orders.positive ? '+' : ''}${stats.orders.change}% vs mes anterior`,
+      change: `${stats.orders.positive ? '+' : ''}${stats.orders.change}% ${getComparisonText()}`,
       icon: ShoppingCart,
       positive: stats.orders.positive,
     },
     {
       title: 'Productos Vendidos',
       value: stats.productsSold.value.toLocaleString(),
-      change: `${stats.productsSold.positive ? '+' : ''}${stats.productsSold.change}% vs mes anterior`,
+      change: `${stats.productsSold.positive ? '+' : ''}${stats.productsSold.change}% ${getComparisonText()}`,
       icon: Package,
       positive: stats.productsSold.positive,
     },
     {
       title: 'Ticket Promedio',
       value: `$${stats.avgTicket.value}`,
-      change: `${stats.avgTicket.positive ? '+' : ''}${stats.avgTicket.change}% vs mes anterior`,
+      change: `${stats.avgTicket.positive ? '+' : ''}${stats.avgTicket.change}% ${getComparisonText()}`,
       icon: TrendingUp,
       positive: stats.avgTicket.positive,
     },
@@ -82,6 +89,51 @@ export default function Dashboard() {
           </div>
         ) : stats ? (
           <>
+            <div className="mb-6 flex flex-wrap gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-foreground">
+                  Fecha
+                </label>
+                <input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-foreground">
+                  Hora
+                </label>
+                <select
+                  value={filterHour}
+                  onChange={(e) => setFilterHour(e.target.value)}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  disabled={!filterDate}
+                >
+                  <option value="">Todas</option>
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i.toString()}>
+                      {i.toString().padStart(2, '0')}:00
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {(filterDate || filterHour) && (
+                <div className="flex items-end">
+                  <button
+                    onClick={() => {
+                      setFilterDate('');
+                      setFilterHour('');
+                    }}
+                    className="rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+                  >
+                    Limpiar filtros
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               {dashboardCards.map((stat) => {
                 const Icon = stat.icon;
@@ -108,36 +160,13 @@ export default function Dashboard() {
               })}
             </div>
 
-            <div className="mt-8 grid gap-6 lg:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ventas por Día</CardTitle>
-                  <p className="text-sm text-muted-foreground">Últimos 7 días</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex h-64 items-end justify-between gap-2">
-                    {stats.salesByDay.map((value, i) => {
-                      const maxValue = Math.max(...stats.salesByDay, 1);
-                      return (
-                        <div key={i} className="flex flex-1 flex-col items-center gap-2">
-                          <div
-                            className="w-full rounded-t-md bg-primary"
-                            style={{ height: `${(value / maxValue) * 100}%` }}
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            {['L', 'M', 'M', 'J', 'V', 'S', 'D'][i]}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
+            <div className="mt-8">
               <Card>
                 <CardHeader>
                   <CardTitle>Productos Más Vendidos</CardTitle>
-                  <p className="text-sm text-muted-foreground">Top 5 de la semana</p>
+                  <p className="text-sm text-muted-foreground">
+                    Top 5 del período seleccionado
+                  </p>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
