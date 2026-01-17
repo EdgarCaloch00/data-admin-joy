@@ -12,12 +12,14 @@ interface DashboardStats {
   avgTicket: { value: string; change: string; positive: boolean };
   salesByDay: number[];
   topProducts: { name: string; sales: number }[];
+  topCombos: { name: string; sales: number }[];
 }
 
 export default function Dashboard() {
   const { selectedBranch } = useBranch();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'products' | 'combos'>('products');
 
   useEffect(() => {
     loadDashboardStats();
@@ -136,26 +138,71 @@ export default function Dashboard() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Productos Más Vendidos</CardTitle>
-                  <p className="text-sm text-muted-foreground">Top 5 de la semana</p>
+                  <div className="flex items-center gap-4 border-b pb-3">
+                    <button
+                      onClick={() => setActiveTab('products')}
+                      className={`pb-2 text-sm font-medium transition-colors ${
+                        activeTab === 'products'
+                          ? 'border-b-2 border-primary text-primary'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Categorías
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('combos')}
+                      className={`pb-2 text-sm font-medium transition-colors ${
+                        activeTab === 'combos'
+                          ? 'border-b-2 border-primary text-primary'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Combos
+                    </button>
+                  </div>
+                  <div className="mt-4">
+                    <CardTitle>
+                      {activeTab === 'products' ? 'Categorías Más Vendidas' : 'Combos Más Vendidos'}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">Top 5 de la semana</p>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {stats.topProducts.length > 0 ? (
-                      stats.topProducts.map((product, i) => (
-                        <div key={i} className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{product.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {product.sales} vendidos
-                          </span>
+                  {activeTab === 'products' ? (
+                    <div className="space-y-4">
+                      {stats.topProducts.length > 0 ? (
+                        stats.topProducts.map((product, i) => (
+                          <div key={i} className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{product.name}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {product.sales} vendidos
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          No hay datos disponibles
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-sm text-muted-foreground">
-                        No hay datos disponibles
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {stats.topCombos.length > 0 ? (
+                        stats.topCombos.map((combo, i) => (
+                          <div key={i} className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{combo.name}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {combo.sales} vendidos
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          No hay datos disponibles
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
