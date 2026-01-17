@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, ShoppingCart, Package, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DollarSign, ShoppingCart, Package, TrendingUp, Calendar } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useBranch } from '@/contexts/BranchContext';
 
+type Period = 'today' | 'week' | 'month' | 'custom';
+
 interface DashboardStats {
-  totalSales: { value: string; change: string; positive: boolean };
-  orders: { value: number; change: string; positive: boolean };
-  productsSold: { value: number; change: string; positive: boolean };
-  avgTicket: { value: string; change: string; positive: boolean };
-  salesByDay: number[];
+  period: string;
+  startDate: string;
+  endDate: string;
+  totalSales: string;
+  orders: number;
+  productsSold: number;
+  avgTicket: string;
   topProducts: { name: string; sales: number }[];
   topCombos: { name: string; sales: number }[];
 }
@@ -20,15 +25,30 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'products' | 'combos'>('products');
+  const [period, setPeriod] = useState<Period>('today');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
 
   useEffect(() => {
     loadDashboardStats();
-  }, [selectedBranch]);
+  }, [selectedBranch, period]);
+
+  useEffect(() => {
+    if (period === 'custom' && customStartDate && customEndDate) {
+      loadDashboardStats();
+    }
+  }, [customStartDate, customEndDate]);
 
   const loadDashboardStats = async () => {
     try {
       setLoading(true);
-      const data = await api.getDashboardStats(selectedBranch?.id);
+      const params: any = { period };
+      if (period === 'custom' && customStartDate && customEndDate) {
+        params.startDate = customStartDate;
+        params.endDate = customEndDate;
+      }
+      const data = await api.getDashboardStats(selectedBranch?.id, params);
       setStats(data);
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -37,36 +57,60 @@ export default function Dashboard() {
     }
   };
 
+  const handlePeriodChange = (newPeriod: Period) => {
+    setPeriod(newPeriod);
+    if (newPeriod !== 'custom') {
+      setShowCustomDatePicker(false);
+    } else {
+      setShowCustomDatePicker(true);
+    }
+  };
+
+  const handleStartDateChange = (newStartDate: string) => {
+    setCustomStartDate(newStartDate);
+    // If end date exists and is before the new start date, update it
+    if (customEndDate && newStartDate > customEndDate) {
+      setCustomEndDate(newStartDate);
+    }
+  };
+
+  const handleEndDateChange = (newEndDate: string) => {
+    setCustomEndDate(newEndDate);
+    // If start date exists and is after the new end date, update it
+    if (customStartDate && newEndDate < customStartDate) {
+      setCustomStartDate(newEndDate);
+    }
+  };
+
   const dashboardCards = stats ? [
     {
       title: 'Ventas Totales',
-      value: `$${stats.totalSales.value}`,
-      change: `${stats.totalSales.positive ? '+' : ''}${stats.totalSales.change}% vs mes anterior`,
+      value: `$${stats.totalSales}`,
       icon: DollarSign,
-      positive: stats.totalSales.positive,
     },
     {
       title: 'Órdenes',
-      value: stats.orders.value.toString(),
-      change: `${stats.orders.positive ? '+' : ''}${stats.orders.change}% vs mes anterior`,
+      value: stats.orders.toString(),
       icon: ShoppingCart,
-      positive: stats.orders.positive,
     },
     {
       title: 'Productos Vendidos',
-      value: stats.productsSold.value.toLocaleString(),
-      change: `${stats.productsSold.positive ? '+' : ''}${stats.productsSold.change}% vs mes anterior`,
+      value: stats.productsSold.toLocaleString(),
       icon: Package,
-      positive: stats.productsSold.positive,
     },
     {
       title: 'Ticket Promedio',
-      value: `$${stats.avgTicket.value}`,
-      change: `${stats.avgTicket.positive ? '+' : ''}${stats.avgTicket.change}% vs mes anterior`,
+      value: `$${stats.avgTicket}`,
       icon: TrendingUp,
-      positive: stats.avgTicket.positive,
     },
   ] : [];
+
+  const periodLabels: Record<Period, string> = {
+    today: 'Hoy',
+    week: 'Esta Semana',
+    month: 'Este Mes',
+    custom: 'Personalizado',
+  };
 
   return (
     <Layout>
@@ -78,6 +122,79 @@ export default function Dashboard() {
           </p>
         </div>
 
+        <div className="mb-6 space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex gap-2">
+              {(['today', 'week', 'month'] as Period[]).map((p) => (
+                <Button
+                  key={p}
+                  onClick={() => handlePeriodChange(p)}
+                  variant={period === p ? 'default' : 'outline'}
+                  size="sm"
+                >
+                  {periodLabels[p]}
+                </Button>
+              ))}
+              <Button
+                onClick={() => handlePeriodChange('custom')}
+                variant={period === 'custom' ? 'default' : 'outline'}
+                size="sm"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {periodLabels['custom']}
+              </Button>
+            </div>
+
+            {showCustomDatePicker && (
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  max={customEndDate || undefined}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => handleEndDateChange(e.target.value)}
+                  min={customStartDate || undefined}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+          </div>
+          
+          {stats && (
+            <p className="text-sm text-muted-foreground">
+              {period === 'today' ? (
+                <>
+                  Mostrando datos de {new Date(stats.startDate).toLocaleDateString('es-MX', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    timeZone: 'America/Chicago'
+                  })}
+                </>
+              ) : (
+                <>
+                  Mostrando datos desde {new Date(stats.startDate).toLocaleDateString('es-MX', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    timeZone: 'America/Chicago'
+                  })} hasta {new Date(stats.endDate).toLocaleDateString('es-MX', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    timeZone: 'America/Chicago'
+                  })}
+                </>
+              )}
+            </p>
+          )}
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-muted-foreground">Cargando estadísticas...</div>
@@ -85,57 +202,25 @@ export default function Dashboard() {
         ) : stats ? (
           <>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {dashboardCards.map((stat) => {
-                const Icon = stat.icon;
+              {dashboardCards.map((card, i) => {
+                const Icon = card.icon;
                 return (
-                  <Card key={stat.title}>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
-                        {stat.title}
+                  <Card key={i}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">
+                        {card.title}
                       </CardTitle>
-                      <Icon className="h-5 w-5 text-muted-foreground" />
+                      <Icon className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold">{stat.value}</div>
-                      <p
-                        className={`mt-2 text-xs ${
-                          stat.positive ? 'text-success' : 'text-destructive'
-                        }`}
-                      >
-                        {stat.change}
-                      </p>
+                      <div className="text-2xl font-bold">{card.value}</div>
                     </CardContent>
                   </Card>
                 );
               })}
             </div>
 
-            <div className="mt-8 grid gap-6 lg:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ventas por Día</CardTitle>
-                  <p className="text-sm text-muted-foreground">Últimos 7 días</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex h-64 items-end justify-between gap-2">
-                    {stats.salesByDay.map((value, i) => {
-                      const maxValue = Math.max(...stats.salesByDay, 1);
-                      return (
-                        <div key={i} className="flex flex-1 flex-col items-center gap-2">
-                          <div
-                            className="w-full rounded-t-md bg-primary"
-                            style={{ height: `${(value / maxValue) * 100}%` }}
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            {['L', 'M', 'M', 'J', 'V', 'S', 'D'][i]}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
+            <div className="mt-8">
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-4 border-b pb-3">
@@ -147,7 +232,7 @@ export default function Dashboard() {
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      Categorías
+                      Productos
                     </button>
                     <button
                       onClick={() => setActiveTab('combos')}
@@ -162,9 +247,11 @@ export default function Dashboard() {
                   </div>
                   <div className="mt-4">
                     <CardTitle>
-                      {activeTab === 'products' ? 'Categorías Más Vendidas' : 'Combos Más Vendidos'}
+                      {activeTab === 'products' ? 'Productos Más Vendidos' : 'Combos Más Vendidos'}
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">Top 5 de la semana</p>
+                    <p className="text-sm text-muted-foreground">
+                      Top 5 del período seleccionado
+                    </p>
                   </div>
                 </CardHeader>
                 <CardContent>
