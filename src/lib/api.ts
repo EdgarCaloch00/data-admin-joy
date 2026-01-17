@@ -300,13 +300,9 @@ class ApiService {
     return this.request('/sale/all');
   }
 
-  async getDashboardStats(branchId?: string, startDate?: string, endDate?: string) {
-    const params = new URLSearchParams();
-    if (branchId) params.append('branch_id', branchId);
-    if (startDate) params.append('start_date', startDate);
-    if (endDate) params.append('end_date', endDate);
-    const queryString = params.toString() ? `?${params.toString()}` : '';
-    return this.request(`/dashboard/stats${queryString}`);
+  async getDashboardStats(branchId?: string) {
+    const params = branchId ? `?branch_id=${branchId}` : '';
+    return this.request(`/dashboard/stats${params}`);
   }
 
    async deleteSale(id: string) {
