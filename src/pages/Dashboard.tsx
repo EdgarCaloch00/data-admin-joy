@@ -17,17 +17,17 @@ export default function Dashboard() {
   const { selectedBranch } = useBranch();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filterDate, setFilterDate] = useState<string>('');
-  const [filterHour, setFilterHour] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   useEffect(() => {
     loadDashboardStats();
-  }, [selectedBranch, filterDate, filterHour]);
+  }, [selectedBranch, startDate, endDate]);
 
   const loadDashboardStats = async () => {
     try {
       setLoading(true);
-      const data = await api.getDashboardStats(selectedBranch?.id, filterDate, filterHour);
+      const data = await api.getDashboardStats(selectedBranch?.id, startDate, endDate);
       setStats(data);
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -37,8 +37,7 @@ export default function Dashboard() {
   };
 
   const getComparisonText = () => {
-    if (filterDate && filterHour) return 'vs hora anterior';
-    if (filterDate) return 'vs día anterior';
+    if (startDate && endDate) return 'vs período anterior';
     return 'vs mes anterior';
   };
 
@@ -92,39 +91,33 @@ export default function Dashboard() {
             <div className="mb-6 flex flex-wrap gap-4">
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-foreground">
-                  Fecha
+                  Fecha Inicio
                 </label>
                 <input
                   type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
                   className="rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-foreground">
-                  Hora
+                  Fecha Fin
                 </label>
-                <select
-                  value={filterHour}
-                  onChange={(e) => setFilterHour(e.target.value)}
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                   className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  disabled={!filterDate}
-                >
-                  <option value="">Todas</option>
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i.toString()}>
-                      {i.toString().padStart(2, '0')}:00
-                    </option>
-                  ))}
-                </select>
+                  min={startDate}
+                />
               </div>
-              {(filterDate || filterHour) && (
+              {(startDate || endDate) && (
                 <div className="flex items-end">
                   <button
                     onClick={() => {
-                      setFilterDate('');
-                      setFilterHour('');
+                      setStartDate('');
+                      setEndDate('');
                     }}
                     className="rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
                   >
