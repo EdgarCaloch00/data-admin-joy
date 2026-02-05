@@ -99,7 +99,7 @@ export interface Combo {
   price: number;
   is_active: boolean;
   branch_id: string;
-  available_days?: string;
+  combo_day?: string;
 }
 
 export interface Sale {
@@ -279,9 +279,9 @@ class ApiService {
   }
 
   async updateCombo(id: string, combo: Partial<Combo>) {
-    return this.request(`/combo/update/${id}`, {
+    return this.request(`/combo/update`, {
       method: 'PUT',
-      body: JSON.stringify(combo),
+      body: JSON.stringify({ ...combo, id }),
     });
   }
 

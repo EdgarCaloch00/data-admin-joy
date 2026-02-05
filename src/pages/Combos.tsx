@@ -79,7 +79,7 @@ export default function Combos() {
         ...currentCombo,
         branch_id: selectedBranch.id,
         is_active: currentCombo.is_active ?? true,
-        available_days: selectedDays.length > 0 ? selectedDays.join(",") : undefined,
+        combo_day: selectedDays.length > 0 ? selectedDays.join(",") : undefined,
       };
 
       if (currentCombo.id) {
@@ -283,8 +283,8 @@ export default function Combos() {
                         onClick={() => {
                           setCurrentCombo(combo);
                           // Cargar días disponibles si existen
-                          if ((combo as any).available_days) {
-                            setSelectedDays((combo as any).available_days.split(","));
+                          if (combo.combo_day) {
+                            setSelectedDays(combo.combo_day.split(","));
                           } else {
                             setSelectedDays([]);
                           }
