@@ -99,6 +99,7 @@ export interface Combo {
   price: number;
   is_active: boolean;
   branch_id: string;
+  available_days?: string;
 }
 
 export interface Sale {

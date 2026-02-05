@@ -60,15 +60,33 @@ export default function Combos() {
   };
 
   const handleSave = async () => {
+    // Validaciones
+    if (!currentCombo.name?.trim()) {
+      toast.error("El nombre es requerido");
+      return;
+    }
+    if (!currentCombo.price || currentCombo.price <= 0) {
+      toast.error("El precio debe ser mayor a 0");
+      return;
+    }
+    if (!selectedBranch?.id) {
+      toast.error("No hay sucursal seleccionada");
+      return;
+    }
+
     try {
+      const comboData = {
+        ...currentCombo,
+        branch_id: selectedBranch.id,
+        is_active: currentCombo.is_active ?? true,
+        available_days: selectedDays.length > 0 ? selectedDays.join(",") : undefined,
+      };
+
       if (currentCombo.id) {
-        await api.updateCombo(currentCombo.id, currentCombo);
+        await api.updateCombo(currentCombo.id, comboData);
         toast.success("Combo actualizado");
       } else {
-        await api.createCombo({
-          ...currentCombo,
-          branch_id: selectedBranch?.id || "",
-        });
+        await api.createCombo(comboData);
         toast.success("Combo creado");
       }
       setIsDialogOpen(false);
@@ -76,6 +94,7 @@ export default function Combos() {
       setSelectedDays([]);
       loadCombos();
     } catch (error) {
+      console.error("Error al guardar combo:", error);
       toast.error("Error al guardar combo");
     }
   };
@@ -112,9 +131,18 @@ export default function Combos() {
               Gestiona los combos y promociones
             </p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setCurrentCombo({});
+              setSelectedDays([]);
+            }
+          }}>
             <DialogTrigger asChild>
-              <Button onClick={() => setCurrentCombo({})}>
+              <Button onClick={() => {
+                setCurrentCombo({});
+                setSelectedDays([]);
+              }}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nuevo Combo
               </Button>
@@ -189,7 +217,11 @@ export default function Combos() {
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
+                    onClick={() => {
+                      setIsDialogOpen(false);
+                      setCurrentCombo({});
+                      setSelectedDays([]);
+                    }}
                   >
                     Cancelar
                   </Button>
@@ -250,6 +282,12 @@ export default function Combos() {
                         size="sm"
                         onClick={() => {
                           setCurrentCombo(combo);
+                          // Cargar días disponibles si existen
+                          if ((combo as any).available_days) {
+                            setSelectedDays((combo as any).available_days.split(","));
+                          } else {
+                            setSelectedDays([]);
+                          }
                           setIsDialogOpen(true);
                         }}
                       >
