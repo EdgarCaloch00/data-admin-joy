@@ -12,6 +12,8 @@ import Ingredientes from "./pages/Ingredientes";
 import Combos from "./pages/Combos";
 import Usuarios from "./pages/Usuarios";
 import Ventas from "./pages/Ventas";
+import Gastos from "./pages/Gastos";
+import DashboardGastos from "./pages/DashboardGastos";
 import NotFound from "./pages/NotFound";
 import { BranchProvider } from "./contexts/BranchContext";
 import SelectBranch from "./pages/SelectBranch";
@@ -82,6 +84,22 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Ventas />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/gastos"
+                element={
+                  <ProtectedRoute>
+                    <Gastos />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard-gastos"
+                element={
+                  <ProtectedRoute>
+                    <DashboardGastos />
                   </ProtectedRoute>
                 }
               />

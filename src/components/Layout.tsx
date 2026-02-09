@@ -11,6 +11,8 @@ import {
   ShoppingCart,
   LogOut,
   Menu,
+  DollarSign,
+  TrendingDown,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -21,6 +23,8 @@ const navigation = [
   { name: 'Combos', href: '/combos', icon: Package2 },
   { name: 'Usuarios', href: '/usuarios', icon: Users },
   { name: 'Ventas', href: '/ventas', icon: ShoppingCart },
+  { name: 'Gastos', href: '/gastos', icon: DollarSign },
+  { name: 'Dashboard Gastos', href: '/dashboard-gastos', icon: TrendingDown },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

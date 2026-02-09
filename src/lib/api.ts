@@ -161,6 +161,41 @@ export interface UserBranch {
   branch_id: string
 }
 
+export type ExpenseCategory = 
+  | 'ingredients' 
+  | 'supplies' 
+  | 'utilities' 
+  | 'rent' 
+  | 'salaries' 
+  | 'other';
+
+export interface Expense {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  date: string;
+  amount: number;
+  description: string;
+  category: ExpenseCategory;
+  branch_id?: string | null;
+}
+
+export interface ExpenseCreate {
+  date: string;
+  amount: number;
+  description: string;
+  category: ExpenseCategory;
+  branch_id: string;
+}
+
+export interface ExpenseUpdate {
+  id: string;
+  date?: string;
+  amount?: number;
+  description?: string;
+  category?: ExpenseCategory;
+}
+
 
 
 class ApiService {
@@ -388,6 +423,42 @@ class ApiService {
 
   async getUserBranches() {
     return this.request(`/user/branch/all`);
+  }
+
+  // Expenses
+  async getExpenses() {
+    return this.request('/expenses');
+  }
+
+  async getExpensesSummary(branchId?: string, params?: { period?: string; startDate?: string; endDate?: string }) {
+    const queryParams = new URLSearchParams();
+    if (branchId) queryParams.append('branch_id', branchId);
+    if (params?.period) queryParams.append('period', params.period);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return this.request(`/expenses/summary${queryString}`);
+  }
+
+  async createExpense(expense: ExpenseCreate) {
+    return this.request('/expense/create', {
+      method: 'POST',
+      body: JSON.stringify(expense),
+    });
+  }
+
+  async updateExpense(expense: ExpenseUpdate) {
+    return this.request('/expense/update', {
+      method: 'PUT',
+      body: JSON.stringify(expense),
+    });
+  }
+
+  async deleteExpense(id: string) {
+    return this.request('/expense/delete', {
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
+    });
   }
 }
 
