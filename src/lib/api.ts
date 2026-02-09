@@ -161,13 +161,22 @@ export interface UserBranch {
   branch_id: string
 }
 
-export type ExpenseCategory = 
-  | 'ingredients' 
-  | 'supplies' 
-  | 'utilities' 
-  | 'rent' 
-  | 'salaries' 
-  | 'other';
+export interface ExpenseSubcategory {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  category_id: string;
+}
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  branch_id?: string | null;
+  expense_subcategory?: ExpenseSubcategory[];
+}
 
 export interface Expense {
   id: string;
@@ -175,16 +184,20 @@ export interface Expense {
   updated_at: string;
   date: string;
   amount: number;
-  description: string;
-  category: ExpenseCategory;
+  description?: string | null;
+  category_id?: string | null;
+  subcategory_id?: string | null;
   branch_id?: string | null;
+  category?: ExpenseCategory | null;
+  subcategory?: ExpenseSubcategory | null;
 }
 
 export interface ExpenseCreate {
   date: string;
   amount: number;
-  description: string;
-  category: ExpenseCategory;
+  description?: string;
+  category_id: string;
+  subcategory_id: string;
   branch_id: string;
 }
 
@@ -193,7 +206,8 @@ export interface ExpenseUpdate {
   date?: string;
   amount?: number;
   description?: string;
-  category?: ExpenseCategory;
+  category_id?: string;
+  subcategory_id?: string;
 }
 
 
@@ -423,6 +437,51 @@ class ApiService {
 
   async getUserBranches() {
     return this.request(`/user/branch/all`);
+  }
+
+  // Expense Categories
+  async getExpenseCategories() {
+    return this.request('/expense-categories');
+  }
+
+  async createExpenseCategory(data: { name: string; branch_id: string }) {
+    return this.request('/expense-category/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateExpenseCategory(id: string, data: { name: string }) {
+    return this.request(`/expense-category/update/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteExpenseCategory(id: string) {
+    return this.request(`/expense-category/delete/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async createExpenseSubcategory(data: { name: string; category_id: string }) {
+    return this.request('/expense-subcategory/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateExpenseSubcategory(id: string, data: { name: string }) {
+    return this.request(`/expense-subcategory/update/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteExpenseSubcategory(id: string) {
+    return this.request(`/expense-subcategory/delete/${id}`, {
+      method: 'DELETE',
+    });
   }
 
   // Expenses

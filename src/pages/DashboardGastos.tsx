@@ -2,57 +2,145 @@ import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingDown, Calendar } from 'lucide-react';
-import { api, ExpenseCategory } from '@/lib/api';
+import { TrendingDown, Calendar, Filter } from 'lucide-react';
+import { api, ExpenseCategory, Expense } from '@/lib/api';
 import { useBranch } from '@/contexts/BranchContext';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 type Period = 'today' | 'week' | 'month' | 'custom';
 
 interface ExpenseSummary {
   totalExpenses: number;
-  categoryTotals: Record<ExpenseCategory, number>;
+  categoryTotals: { [key: string]: number };
+  subcategoryTotals: { [key: string]: number };
   period: {
     start: string;
     end: string;
   };
 }
 
-const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  ingredients: "Ingredientes",
-  supplies: "Suministros",
-  utilities: "Servicios (Luz, Agua, Gas)",
-  rent: "Renta",
-  salaries: "Salarios",
-  other: "Otro",
-};
-
-const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
-  ingredients: "bg-green-500",
-  supplies: "bg-yellow-500",
-  utilities: "bg-blue-500",
-  rent: "bg-purple-500",
-  salaries: "bg-red-500",
-  other: "bg-gray-500",
-};
+const COLORS = [
+  'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 
+  'bg-red-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500',
+  'bg-orange-500', 'bg-cyan-500'
+];
 
 export default function DashboardGastos() {
   const { selectedBranch } = useBranch();
   const [summary, setSummary] = useState<ExpenseSummary | null>(null);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('month');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
+  const [filterSubcategoryId, setFilterSubcategoryId] = useState<string>('all');
+
+  useEffect(() => {
+    loadCategories();
+  }, [selectedBranch]);
 
   useEffect(() => {
     loadExpensesSummary();
-  }, [selectedBranch, period]);
+    loadExpenses();
+  }, [selectedBranch, period, filterCategoryId, filterSubcategoryId]);
 
   useEffect(() => {
     if (period === 'custom' && customStartDate && customEndDate) {
       loadExpensesSummary();
+      loadExpenses();
     }
   }, [customStartDate, customEndDate]);
+
+  const loadCategories = async () => {
+    try {
+      const data = await api.getExpenseCategories();
+      const filterByBranch = data.filter(
+        (cat: ExpenseCategory) => cat.branch_id === selectedBranch?.id
+      );
+      setCategories(filterByBranch);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
+
+  const loadExpenses = async () => {
+    try {
+      const data = await api.getExpenses();
+      let filtered = data.filter(
+        (expense: Expense) => expense.branch_id === selectedBranch?.id
+      );
+
+      // Apply date filter based on period
+      const now = new Date();
+      let startDate: Date;
+      
+      if (period === 'custom' && customStartDate && customEndDate) {
+        startDate = new Date(customStartDate);
+        const endDate = new Date(customEndDate);
+        filtered = filtered.filter((expense: Expense) => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= startDate && expenseDate <= endDate;
+        });
+      } else if (period === 'today') {
+        startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
+        filtered = filtered.filter((expense: Expense) => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= startDate && expenseDate <= endDate;
+        });
+      } else if (period === 'week') {
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - 7);
+        filtered = filtered.filter((expense: Expense) => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= startDate;
+        });
+      } else if (period === 'month') {
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 1);
+        filtered = filtered.filter((expense: Expense) => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= startDate;
+        });
+      }
+
+      // Apply category/subcategory filters
+      if (filterCategoryId !== 'all') {
+        filtered = filtered.filter((expense: Expense) => expense.category_id === filterCategoryId);
+      }
+      if (filterSubcategoryId !== 'all') {
+        filtered = filtered.filter((expense: Expense) => expense.subcategory_id === filterSubcategoryId);
+      }
+
+      // Sort by date descending
+      filtered.sort((a: Expense, b: Expense) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      
+      setExpenses(filtered);
+    } catch (error) {
+      console.error('Error loading expenses:', error);
+    }
+  };
 
   const loadExpensesSummary = async () => {
     try {
@@ -61,6 +149,12 @@ export default function DashboardGastos() {
       if (period === 'custom' && customStartDate && customEndDate) {
         params.startDate = customStartDate;
         params.endDate = customEndDate;
+      }
+      if (filterCategoryId !== 'all') {
+        params.category_id = filterCategoryId;
+      }
+      if (filterSubcategoryId !== 'all') {
+        params.subcategory_id = filterSubcategoryId;
       }
       const data = await api.getExpensesSummary(selectedBranch?.id, params);
       setSummary(data);
@@ -86,6 +180,29 @@ export default function DashboardGastos() {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const getAvailableSubcategories = () => {
+    if (filterCategoryId === 'all') return [];
+    const category = categories.find(c => c.id === filterCategoryId);
+    return category?.expense_subcategory || [];
+  };
+
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category?.name || categoryId;
+  };
+
+  const getSubcategoryName = (subcategoryId: string) => {
+    for (const category of categories) {
+      const sub = category.expense_subcategory?.find(s => s.id === subcategoryId);
+      if (sub) return sub.name;
+    }
+    return subcategoryId;
+  };
+
+  const getColor = (index: number) => {
+    return COLORS[index % COLORS.length];
   };
 
   return (
@@ -150,6 +267,62 @@ export default function DashboardGastos() {
           </div>
         )}
 
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Filter className="h-4 w-4" />
+              Filtros
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium">Categoría</label>
+                <Select
+                  value={filterCategoryId}
+                  onValueChange={(value) => {
+                    setFilterCategoryId(value);
+                    setFilterSubcategoryId('all');
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas las categorías" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las categorías</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">Subcategoría</label>
+                <Select
+                  value={filterSubcategoryId}
+                  onValueChange={setFilterSubcategoryId}
+                  disabled={filterCategoryId === 'all'}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas las subcategorías" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las subcategorías</SelectItem>
+                    {getAvailableSubcategories().map((sub) => (
+                      <SelectItem key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-muted-foreground">Cargando estadísticas...</div>
@@ -180,62 +353,171 @@ export default function DashboardGastos() {
 
             {/* Category Breakdown */}
             {summary.totalExpenses > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Desglose por Categoría</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Distribución del gasto en el período seleccionado
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {Object.entries(summary.categoryTotals)
-                      .filter(([_, amount]) => amount > 0)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([category, amount]) => {
-                        const percentage = (amount / summary.totalExpenses) * 100;
-                        return (
-                          <div key={category} className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className={`h-3 w-3 rounded-full ${
-                                    CATEGORY_COLORS[category as ExpenseCategory]
-                                  }`}
-                                />
-                                <span className="font-medium">
-                                  {CATEGORY_LABELS[category as ExpenseCategory]}
-                                </span>
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* By Category */}
+                {Object.keys(summary.categoryTotals || {}).length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Desglose por Categoría</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Distribución del gasto por categoría
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {Object.entries(summary.categoryTotals)
+                          .filter(([_, amount]) => amount > 0)
+                          .sort(([, a], [, b]) => (b as number) - (a as number))
+                          .map(([categoryId, amount], index) => {
+                            const percentage = ((amount as number) / summary.totalExpenses) * 100;
+                            return (
+                              <div key={categoryId} className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div
+                                      className={`h-3 w-3 rounded-full ${getColor(index)}`}
+                                    />
+                                    <span className="font-medium">
+                                      {getCategoryName(categoryId)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-sm text-muted-foreground">
+                                      {percentage.toFixed(1)}%
+                                    </span>
+                                    <span className="font-bold">
+                                      ${(amount as number).toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                                  <div
+                                    className={`h-full transition-all ${getColor(index)}`}
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-sm text-muted-foreground">
-                                  {percentage.toFixed(1)}%
-                                </span>
-                                <span className="font-bold">
-                                  ${amount.toFixed(2)}
-                                </span>
+                            );
+                          })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* By Subcategory */}
+                {Object.keys(summary.subcategoryTotals || {}).length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Desglose por Subcategoría</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Distribución del gasto por subcategoría
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {Object.entries(summary.subcategoryTotals)
+                          .filter(([_, amount]) => amount > 0)
+                          .sort(([, a], [, b]) => (b as number) - (a as number))
+                          .map(([subcategoryId, amount], index) => {
+                            const percentage = ((amount as number) / summary.totalExpenses) * 100;
+                            return (
+                              <div key={subcategoryId} className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div
+                                      className={`h-3 w-3 rounded-full ${getColor(index + 5)}`}
+                                    />
+                                    <span className="font-medium">
+                                      {getSubcategoryName(subcategoryId)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-sm text-muted-foreground">
+                                      {percentage.toFixed(1)}%
+                                    </span>
+                                    <span className="font-bold">
+                                      ${(amount as number).toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                                  <div
+                                    className={`h-full transition-all ${getColor(index + 5)}`}
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
                               </div>
-                            </div>
-                            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                              <div
-                                className={`h-full transition-all ${
-                                  CATEGORY_COLORS[category as ExpenseCategory]
-                                }`}
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </CardContent>
-              </Card>
+                            );
+                          })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
 
             {summary.totalExpenses === 0 && (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
                   No hay gastos registrados en este período
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Expense List */}
+            {expenses.length > 0 && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Detalle de Gastos</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {expenses.length} {expenses.length === 1 ? 'gasto' : 'gastos'} en el período seleccionado
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Subcategoría</TableHead>
+                        <TableHead className="text-right">Monto</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {expenses.map((expense) => (
+                        <TableRow key={expense.id}>
+                          <TableCell className="whitespace-nowrap">
+                            {new Date(expense.date).toLocaleDateString('es-MX')}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {expense.description || '-'}
+                          </TableCell>
+                          <TableCell>
+                            {expense.category ? (
+                              <span className="rounded-full bg-secondary px-2 py-1 text-xs font-medium">
+                                {expense.category.name}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {expense.subcategory ? (
+                              <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                                {expense.subcategory.name}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            ${expense.amount.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             )}
