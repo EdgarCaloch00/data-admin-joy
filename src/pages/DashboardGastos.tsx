@@ -3,7 +3,7 @@ import React from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TrendingDown, Calendar, Filter } from 'lucide-react';
+import { TrendingDown, Calendar, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { api, ExpenseCategory, Expense } from '@/lib/api';
 import { useBranch } from '@/contexts/BranchContext';
 import {
@@ -39,6 +39,7 @@ export default function DashboardGastos() {
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [filterSubcategoryId, setFilterSubcategoryId] = useState<string>('all');
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadCategories();
@@ -186,6 +187,18 @@ export default function DashboardGastos() {
     });
 
     return grouped;
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setCollapsedCategories((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId);
+      } else {
+        newSet.add(categoryId);
+      }
+      return newSet;
+    });
   };
 
   return (
@@ -345,76 +358,79 @@ export default function DashboardGastos() {
                 </div>
 
                 {/* Category Cards */}
-                {Object.entries(getGroupedExpenses()).map(([categoryId, categoryData]) => (
+                {Object.entries(getGroupedExpenses()).map(([categoryId, categoryData]) => {
+                  const isCollapsed = collapsedCategories.has(categoryId);
+                  return (
                   <Card key={categoryId} className="overflow-hidden">
                     {/* Category Header */}
-                    <div className="bg-primary/10 px-6 py-4 border-b">
+                    <div 
+                      className="bg-primary/10 px-6 py-4 border-b cursor-pointer hover:bg-primary/15 transition-colors"
+                      onClick={() => toggleCategory(categoryId)}
+                    >
                       <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-foreground">
-                          {categoryData.categoryName}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          {isCollapsed ? (
+                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                          ) : (
+                            <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                          )}
+                          <h3 className="text-lg font-bold text-foreground">
+                            {categoryData.categoryName}
+                          </h3>
+                        </div>
                         <div className="text-lg font-bold text-foreground">
                           ${categoryData.total.toFixed(2)}
                         </div>
                       </div>
                     </div>
 
-                    <CardContent className="p-0">
-                      {/* Subcategories */}
-                      {Object.entries(categoryData.subcategories).map(([subcategoryId, subcategoryData], subIndex) => (
-                        <div key={subcategoryId} className={subIndex > 0 ? 'border-t' : ''}>
-                          {/* Subcategory Header */}
-                          <div className="bg-muted/30 px-6 py-3 flex items-center justify-between">
-                            <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                              <span className="text-muted-foreground">•</span>
-                              {subcategoryData.subcategoryName}
-                            </h4>
-                            <span className="font-semibold text-sm">
-                              ${subcategoryData.total.toFixed(2)}
-                            </span>
-                          </div>
+                    {!isCollapsed && (
+                      <CardContent className="p-0">
+                        {/* Subcategories */}
+                        {Object.entries(categoryData.subcategories).map(([subcategoryId, subcategoryData], subIndex) => (
+                          <div key={subcategoryId} className={subIndex > 0 ? 'border-t' : ''}>
+                            {/* Subcategory Header */}
+                            <div className="bg-muted/30 px-6 py-3 flex items-center justify-between">
+                              <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                                <span className="text-muted-foreground">•</span>
+                                {subcategoryData.subcategoryName}
+                              </h4>
+                              <span className="font-semibold text-sm">
+                                ${subcategoryData.total.toFixed(2)}
+                              </span>
+                            </div>
 
-                          {/* Individual Expenses */}
-                          <div className="divide-y">
-                            {subcategoryData.expenses.map((expense) => (
-                              <div
-                                key={expense.id}
-                                className="px-6 py-3 hover:bg-muted/20 transition-colors flex items-center justify-between gap-4"
-                              >
-                                <div className="flex items-center gap-4 flex-1 min-w-0">
-                                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                    {new Date(expense.date).toLocaleDateString('es-MX', {
-                                      month: 'short',
-                                      day: 'numeric'
-                                    })}
-                                  </span>
-                                  <span className="text-sm flex-1 truncate">
-                                    {expense.description || 'Sin descripción'}
+                            {/* Individual Expenses */}
+                            <div className="divide-y">
+                              {subcategoryData.expenses.map((expense) => (
+                                <div
+                                  key={expense.id}
+                                  className="px-6 py-3 hover:bg-muted/20 transition-colors flex items-center justify-between gap-4"
+                                >
+                                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                                      {new Date(expense.date).toLocaleDateString('es-MX', {
+                                        month: 'short',
+                                        day: 'numeric'
+                                      })}
+                                    </span>
+                                    <span className="text-sm flex-1 truncate">
+                                      {expense.description || 'Sin descripción'}
+                                    </span>
+                                  </div>
+                                  <span className="font-medium text-sm whitespace-nowrap">
+                                    ${expense.amount.toFixed(2)}
                                   </span>
                                 </div>
-                                <span className="font-medium text-sm whitespace-nowrap">
-                                  ${expense.amount.toFixed(2)}
-                                </span>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </CardContent>
+                        ))}
+                      </CardContent>
+                    )}
                   </Card>
-                ))}
-
-                {/* Grand Total Card */}
-                <Card className="bg-primary/5 border-primary/20">
-                  <CardContent className="px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-bold">Total General</h3>
-                      <div className="text-2xl font-bold text-primary">
-                        ${summary.totalExpenses.toFixed(2)}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                  );
+                })}
               </div>
             ) : (
               <Card>
