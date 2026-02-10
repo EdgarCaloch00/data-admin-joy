@@ -227,7 +227,7 @@ export default function Gastos() {
 
   const filteredExpenses = expenses
     .filter((expense) =>
-      expense.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      (expense.description || "").toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 

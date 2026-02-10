@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import React from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,12 +33,6 @@ interface ExpenseSummary {
     end: string;
   };
 }
-
-const COLORS = [
-  'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 
-  'bg-red-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500',
-  'bg-orange-500', 'bg-cyan-500'
-];
 
 export default function DashboardGastos() {
   const { selectedBranch } = useBranch();
@@ -125,7 +120,14 @@ export default function DashboardGastos() {
 
       // Apply category/subcategory filters
       if (filterCategoryId !== 'all') {
-        filtered = filtered.filter((expense: Expense) => expense.category_id === filterCategoryId);
+        filtered = filtered.filter((expense: Expense) => {
+          // Check if expense has a subcategory and if that subcategory belongs to the filtered category
+          if (expense.subcategory && expense.subcategory.category_id === filterCategoryId) {
+            return true;
+          }
+          // Fallback to direct category_id match for expenses without subcategories
+          return expense.category_id === filterCategoryId;
+        });
       }
       if (filterSubcategoryId !== 'all') {
         filtered = filtered.filter((expense: Expense) => expense.subcategory_id === filterSubcategoryId);
@@ -201,8 +203,66 @@ export default function DashboardGastos() {
     return subcategoryId;
   };
 
-  const getColor = (index: number) => {
-    return COLORS[index % COLORS.length];
+  // Group expenses by category and subcategory for hierarchical display
+  const getGroupedExpenses = () => {
+    const grouped: {
+      [categoryId: string]: {
+        categoryName: string;
+        subcategories: {
+          [subcategoryId: string]: {
+            subcategoryName: string;
+            expenses: Expense[];
+            total: number;
+          };
+        };
+        total: number;
+      };
+    } = {};
+
+    expenses.forEach((expense) => {
+      // Determine the category (prefer subcategory's parent category)
+      let categoryId: string;
+      let categoryName: string;
+      
+      if (expense.subcategory && expense.subcategory.category_id) {
+        categoryId = expense.subcategory.category_id;
+        categoryName = getCategoryName(categoryId);
+      } else if (expense.category_id && expense.category) {
+        categoryId = expense.category_id;
+        categoryName = expense.category.name;
+      } else {
+        return; // Skip expenses without category
+      }
+
+      // Initialize category if not exists
+      if (!grouped[categoryId]) {
+        grouped[categoryId] = {
+          categoryName,
+          subcategories: {},
+          total: 0,
+        };
+      }
+
+      // Determine subcategory
+      const subcategoryId = expense.subcategory_id || 'sin-subcategoria';
+      const subcategoryName = expense.subcategory?.name || 'Sin subcategoría';
+
+      // Initialize subcategory if not exists
+      if (!grouped[categoryId].subcategories[subcategoryId]) {
+        grouped[categoryId].subcategories[subcategoryId] = {
+          subcategoryName,
+          expenses: [],
+          total: 0,
+        };
+      }
+
+      // Add expense to subcategory
+      grouped[categoryId].subcategories[subcategoryId].expenses.push(expense);
+      grouped[categoryId].subcategories[subcategoryId].total += expense.amount;
+      grouped[categoryId].total += expense.amount;
+    });
+
+    return grouped;
   };
 
   return (
@@ -351,119 +411,9 @@ export default function DashboardGastos() {
               </Card>
             </div>
 
-            {/* Category/Subcategory Breakdown */}
-            {summary.totalExpenses > 0 && (
-              <div>
-                {/* Show subcategories if filtering by category, otherwise show categories */}
-                {filterCategoryId !== 'all' && Object.keys(summary.subcategoryTotals || {}).length > 0 ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Desglose</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        Distribución del gasto por subcategoría
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
-                        {Object.entries(summary.subcategoryTotals)
-                          .filter(([_, amount]) => amount > 0)
-                          .sort(([, a], [, b]) => (b as number) - (a as number))
-                          .map(([subcategoryId, amount], index) => {
-                            const percentage = ((amount as number) / summary.totalExpenses) * 100;
-                            return (
-                              <div key={subcategoryId} className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div
-                                      className={`h-3 w-3 rounded-full ${getColor(index)}`}
-                                    />
-                                    <span className="font-medium">
-                                      {getSubcategoryName(subcategoryId)}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-sm text-muted-foreground">
-                                      {percentage.toFixed(1)}%
-                                    </span>
-                                    <span className="font-bold">
-                                      ${(amount as number).toFixed(2)}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                                  <div
-                                    className={`h-full transition-all ${getColor(index)}`}
-                                    style={{ width: `${percentage}%` }}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : Object.keys(summary.categoryTotals || {}).length > 0 ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Desglose</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        Distribución del gasto por categoría
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
-                        {Object.entries(summary.categoryTotals)
-                          .filter(([_, amount]) => amount > 0)
-                          .sort(([, a], [, b]) => (b as number) - (a as number))
-                          .map(([categoryId, amount], index) => {
-                            const percentage = ((amount as number) / summary.totalExpenses) * 100;
-                            return (
-                              <div key={categoryId} className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div
-                                      className={`h-3 w-3 rounded-full ${getColor(index)}`}
-                                    />
-                                    <span className="font-medium">
-                                      {getCategoryName(categoryId)}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-sm text-muted-foreground">
-                                      {percentage.toFixed(1)}%
-                                    </span>
-                                    <span className="font-bold">
-                                      ${(amount as number).toFixed(2)}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                                  <div
-                                    className={`h-full transition-all ${getColor(index)}`}
-                                    style={{ width: `${percentage}%` }}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : null}
-              </div>
-            )}
-
-            {summary.totalExpenses === 0 && (
+            {/* Expense List with Category and Subcategory Grouping */}
+            {expenses.length > 0 ? (
               <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
-                  No hay gastos registrados en este período
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Expense List */}
-            {expenses.length > 0 && (
-              <Card className="mt-6">
                 <CardHeader>
                   <CardTitle>Detalle de Gastos</CardTitle>
                   <p className="text-sm text-muted-foreground">
@@ -476,45 +426,73 @@ export default function DashboardGastos() {
                       <TableRow>
                         <TableHead>Fecha</TableHead>
                         <TableHead>Descripción</TableHead>
-                        <TableHead>Categoría</TableHead>
-                        <TableHead>Subcategoría</TableHead>
+                        <TableHead>Categoría / Subcategoría</TableHead>
                         <TableHead className="text-right">Monto</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {expenses.map((expense) => (
-                        <TableRow key={expense.id}>
-                          <TableCell className="whitespace-nowrap">
-                            {new Date(expense.date).toLocaleDateString('es-MX')}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {expense.description || '-'}
-                          </TableCell>
-                          <TableCell>
-                            {expense.category ? (
-                              <span className="rounded-full bg-secondary px-2 py-1 text-xs font-medium">
-                                {expense.category.name}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {expense.subcategory ? (
-                              <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-                                {expense.subcategory.name}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">
-                            ${expense.amount.toFixed(2)}
-                          </TableCell>
-                        </TableRow>
+                      {Object.entries(getGroupedExpenses()).map(([categoryId, categoryData]) => (
+                        <React.Fragment key={categoryId}>
+                          {/* Category Header */}
+                          <TableRow className="bg-primary/5 hover:bg-primary/10">
+                            <TableCell colSpan={3} className="font-bold text-base">
+                              {categoryData.categoryName}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-base">
+                              ${categoryData.total.toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+
+                          {/* Subcategories and Expenses */}
+                          {Object.entries(categoryData.subcategories).map(([subcategoryId, subcategoryData]) => (
+                            <React.Fragment key={subcategoryId}>
+                              {/* Subcategory Header */}
+                              <TableRow className="bg-muted/30 hover:bg-muted/50">
+                                <TableCell colSpan={3} className="pl-8 font-semibold text-sm">
+                                  ↳ {subcategoryData.subcategoryName}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-sm">
+                                  ${subcategoryData.total.toFixed(2)}
+                                </TableCell>
+                              </TableRow>
+
+                              {/* Individual Expenses */}
+                              {subcategoryData.expenses.map((expense) => (
+                                <TableRow key={expense.id} className="hover:bg-muted/20">
+                                  <TableCell className="pl-16 whitespace-nowrap text-sm">
+                                    {new Date(expense.date).toLocaleDateString('es-MX')}
+                                  </TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">
+                                    {expense.description || '-'}
+                                  </TableCell>
+                                  <TableCell></TableCell>
+                                  <TableCell className="text-right font-medium">
+                                    ${expense.amount.toFixed(2)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </React.Fragment>
+                          ))}
+                        </React.Fragment>
                       ))}
+
+                      {/* Grand Total Row */}
+                      <TableRow className="bg-primary/10 hover:bg-primary/15 border-t-2 border-primary/20">
+                        <TableCell colSpan={3} className="font-bold text-base">
+                          Total General
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-base">
+                          ${summary?.totalExpenses.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
                     </TableBody>
                   </Table>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  No hay gastos registrados en este período
                 </CardContent>
               </Card>
             )}
