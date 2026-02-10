@@ -13,14 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 
 type Period = 'today' | 'week' | 'month' | 'custom';
 
@@ -344,82 +336,86 @@ export default function DashboardGastos() {
 
             {/* Expense List with Category and Subcategory Grouping */}
             {expenses.length > 0 ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Detalle de Gastos</CardTitle>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Detalle de Gastos</h2>
                   <p className="text-sm text-muted-foreground">
                     {expenses.length} {expenses.length === 1 ? 'gasto' : 'gastos'} en el período seleccionado
                   </p>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead>Categoría / Subcategoría</TableHead>
-                        <TableHead className="text-right">Monto</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.entries(getGroupedExpenses()).map(([categoryId, categoryData]) => (
-                        <React.Fragment key={categoryId}>
-                          {/* Category Header */}
-                          <TableRow className="bg-primary/5 hover:bg-primary/10">
-                            <TableCell colSpan={3} className="font-bold text-base">
-                              {categoryData.categoryName}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-base">
-                              ${categoryData.total.toFixed(2)}
-                            </TableCell>
-                          </TableRow>
+                </div>
 
-                          {/* Subcategories and Expenses */}
-                          {Object.entries(categoryData.subcategories).map(([subcategoryId, subcategoryData]) => (
-                            <React.Fragment key={subcategoryId}>
-                              {/* Subcategory Header */}
-                              <TableRow className="bg-muted/30 hover:bg-muted/50">
-                                <TableCell colSpan={3} className="pl-8 font-semibold text-sm">
-                                  ↳ {subcategoryData.subcategoryName}
-                                </TableCell>
-                                <TableCell className="text-right font-semibold text-sm">
-                                  ${subcategoryData.total.toFixed(2)}
-                                </TableCell>
-                              </TableRow>
+                {/* Category Cards */}
+                {Object.entries(getGroupedExpenses()).map(([categoryId, categoryData]) => (
+                  <Card key={categoryId} className="overflow-hidden">
+                    {/* Category Header */}
+                    <div className="bg-primary/10 px-6 py-4 border-b">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-bold text-foreground">
+                          {categoryData.categoryName}
+                        </h3>
+                        <div className="text-lg font-bold text-foreground">
+                          ${categoryData.total.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
 
-                              {/* Individual Expenses */}
-                              {subcategoryData.expenses.map((expense) => (
-                                <TableRow key={expense.id} className="hover:bg-muted/20">
-                                  <TableCell className="pl-16 whitespace-nowrap text-sm">
-                                    {new Date(expense.date).toLocaleDateString('es-MX')}
-                                  </TableCell>
-                                  <TableCell className="text-sm text-muted-foreground">
-                                    {expense.description || '-'}
-                                  </TableCell>
-                                  <TableCell></TableCell>
-                                  <TableCell className="text-right font-medium">
-                                    ${expense.amount.toFixed(2)}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </React.Fragment>
-                          ))}
-                        </React.Fragment>
+                    <CardContent className="p-0">
+                      {/* Subcategories */}
+                      {Object.entries(categoryData.subcategories).map(([subcategoryId, subcategoryData], subIndex) => (
+                        <div key={subcategoryId} className={subIndex > 0 ? 'border-t' : ''}>
+                          {/* Subcategory Header */}
+                          <div className="bg-muted/30 px-6 py-3 flex items-center justify-between">
+                            <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                              <span className="text-muted-foreground">•</span>
+                              {subcategoryData.subcategoryName}
+                            </h4>
+                            <span className="font-semibold text-sm">
+                              ${subcategoryData.total.toFixed(2)}
+                            </span>
+                          </div>
+
+                          {/* Individual Expenses */}
+                          <div className="divide-y">
+                            {subcategoryData.expenses.map((expense) => (
+                              <div
+                                key={expense.id}
+                                className="px-6 py-3 hover:bg-muted/20 transition-colors flex items-center justify-between gap-4"
+                              >
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                                    {new Date(expense.date).toLocaleDateString('es-MX', {
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })}
+                                  </span>
+                                  <span className="text-sm flex-1 truncate">
+                                    {expense.description || 'Sin descripción'}
+                                  </span>
+                                </div>
+                                <span className="font-medium text-sm whitespace-nowrap">
+                                  ${expense.amount.toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       ))}
+                    </CardContent>
+                  </Card>
+                ))}
 
-                      {/* Grand Total Row */}
-                      <TableRow className="bg-primary/10 hover:bg-primary/15 border-t-2 border-primary/20">
-                        <TableCell colSpan={3} className="font-bold text-base">
-                          Total General
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-base">
-                          ${summary.totalExpenses.toFixed(2)}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                {/* Grand Total Card */}
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardContent className="px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold">Total General</h3>
+                      <div className="text-2xl font-bold text-primary">
+                        ${summary.totalExpenses.toFixed(2)}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             ) : (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
