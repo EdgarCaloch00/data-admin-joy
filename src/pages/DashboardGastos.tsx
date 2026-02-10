@@ -28,6 +28,7 @@ interface ExpenseSummary {
   totalExpenses: number;
   categoryTotals: { [key: string]: number };
   subcategoryTotals: { [key: string]: number };
+  expenses: Expense[];
   period: {
     start: string;
     end: string;
@@ -53,13 +54,11 @@ export default function DashboardGastos() {
 
   useEffect(() => {
     loadExpensesSummary();
-    loadExpenses();
   }, [selectedBranch, period, filterCategoryId, filterSubcategoryId]);
 
   useEffect(() => {
     if (period === 'custom' && customStartDate && customEndDate) {
       loadExpensesSummary();
-      loadExpenses();
     }
   }, [customStartDate, customEndDate]);
 
@@ -72,75 +71,6 @@ export default function DashboardGastos() {
       setCategories(filterByBranch);
     } catch (error) {
       console.error('Error loading categories:', error);
-    }
-  };
-
-  const loadExpenses = async () => {
-    try {
-      const data = await api.getExpenses();
-      let filtered = data.filter(
-        (expense: Expense) => expense.branch_id === selectedBranch?.id
-      );
-
-      // Apply date filter based on period
-      const now = new Date();
-      let startDate: Date;
-      
-      if (period === 'custom' && customStartDate && customEndDate) {
-        startDate = new Date(customStartDate);
-        const endDate = new Date(customEndDate);
-        filtered = filtered.filter((expense: Expense) => {
-          const expenseDate = new Date(expense.date);
-          return expenseDate >= startDate && expenseDate <= endDate;
-        });
-      } else if (period === 'today') {
-        startDate = new Date();
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date();
-        endDate.setHours(23, 59, 59, 999);
-        filtered = filtered.filter((expense: Expense) => {
-          const expenseDate = new Date(expense.date);
-          return expenseDate >= startDate && expenseDate <= endDate;
-        });
-      } else if (period === 'week') {
-        startDate = new Date();
-        startDate.setDate(startDate.getDate() - 7);
-        filtered = filtered.filter((expense: Expense) => {
-          const expenseDate = new Date(expense.date);
-          return expenseDate >= startDate;
-        });
-      } else if (period === 'month') {
-        startDate = new Date();
-        startDate.setMonth(startDate.getMonth() - 1);
-        filtered = filtered.filter((expense: Expense) => {
-          const expenseDate = new Date(expense.date);
-          return expenseDate >= startDate;
-        });
-      }
-
-      // Apply category/subcategory filters
-      if (filterCategoryId !== 'all') {
-        filtered = filtered.filter((expense: Expense) => {
-          // Check if expense has a subcategory and if that subcategory belongs to the filtered category
-          if (expense.subcategory && expense.subcategory.category_id === filterCategoryId) {
-            return true;
-          }
-          // Fallback to direct category_id match for expenses without subcategories
-          return expense.category_id === filterCategoryId;
-        });
-      }
-      if (filterSubcategoryId !== 'all') {
-        filtered = filtered.filter((expense: Expense) => expense.subcategory_id === filterSubcategoryId);
-      }
-
-      // Sort by date descending
-      filtered.sort((a: Expense, b: Expense) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      
-      setExpenses(filtered);
-    } catch (error) {
-      console.error('Error loading expenses:', error);
     }
   };
 
@@ -160,6 +90,7 @@ export default function DashboardGastos() {
       }
       const data = await api.getExpensesSummary(selectedBranch?.id, params);
       setSummary(data);
+      setExpenses(data.expenses || []);
     } catch (error) {
       console.error('Error loading expense summary:', error);
     } finally {
@@ -482,7 +413,7 @@ export default function DashboardGastos() {
                           Total General
                         </TableCell>
                         <TableCell className="text-right font-bold text-base">
-                          ${summary?.totalExpenses.toFixed(2)}
+                          ${summary.totalExpenses.toFixed(2)}
                         </TableCell>
                       </TableRow>
                     </TableBody>

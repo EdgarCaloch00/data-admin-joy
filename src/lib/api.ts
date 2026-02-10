@@ -489,12 +489,14 @@ class ApiService {
     return this.request('/expenses');
   }
 
-  async getExpensesSummary(branchId?: string, params?: { period?: string; startDate?: string; endDate?: string }) {
+  async getExpensesSummary(branchId?: string, params?: { period?: string; startDate?: string; endDate?: string; category_id?: string; subcategory_id?: string }) {
     const queryParams = new URLSearchParams();
     if (branchId) queryParams.append('branch_id', branchId);
     if (params?.period) queryParams.append('period', params.period);
     if (params?.startDate) queryParams.append('startDate', params.startDate);
     if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.category_id) queryParams.append('category_id', params.category_id);
+    if (params?.subcategory_id) queryParams.append('subcategory_id', params.subcategory_id);
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
     return this.request(`/expenses/summary${queryString}`);
   }
