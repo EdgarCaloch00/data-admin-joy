@@ -344,21 +344,68 @@ export default function DashboardGastos() {
                   <TrendingDown className="h-4 w-4 text-red-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-red-600">
+                  <div className="text-3xl font-bold text-foreground">
                     ${summary.totalExpenses.toFixed(2)}
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Category Breakdown */}
+            {/* Category/Subcategory Breakdown */}
             {summary.totalExpenses > 0 && (
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* By Category */}
-                {Object.keys(summary.categoryTotals || {}).length > 0 && (
+              <div>
+                {/* Show subcategories if filtering by subcategory, otherwise show categories */}
+                {filterSubcategoryId !== 'all' && Object.keys(summary.subcategoryTotals || {}).length > 0 ? (
                   <Card>
                     <CardHeader>
-                      <CardTitle>Desglose por Categoría</CardTitle>
+                      <CardTitle>Desglose</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Distribución del gasto por subcategoría
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {Object.entries(summary.subcategoryTotals)
+                          .filter(([_, amount]) => amount > 0)
+                          .sort(([, a], [, b]) => (b as number) - (a as number))
+                          .map(([subcategoryId, amount], index) => {
+                            const percentage = ((amount as number) / summary.totalExpenses) * 100;
+                            return (
+                              <div key={subcategoryId} className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div
+                                      className={`h-3 w-3 rounded-full ${getColor(index)}`}
+                                    />
+                                    <span className="font-medium">
+                                      {getSubcategoryName(subcategoryId)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-sm text-muted-foreground">
+                                      {percentage.toFixed(1)}%
+                                    </span>
+                                    <span className="font-bold">
+                                      ${(amount as number).toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                                  <div
+                                    className={`h-full transition-all ${getColor(index)}`}
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : Object.keys(summary.categoryTotals || {}).length > 0 ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Desglose</CardTitle>
                       <p className="text-sm text-muted-foreground">
                         Distribución del gasto por categoría
                       </p>
@@ -402,57 +449,7 @@ export default function DashboardGastos() {
                       </div>
                     </CardContent>
                   </Card>
-                )}
-
-                {/* By Subcategory */}
-                {Object.keys(summary.subcategoryTotals || {}).length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Desglose por Subcategoría</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        Distribución del gasto por subcategoría
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
-                        {Object.entries(summary.subcategoryTotals)
-                          .filter(([_, amount]) => amount > 0)
-                          .sort(([, a], [, b]) => (b as number) - (a as number))
-                          .map(([subcategoryId, amount], index) => {
-                            const percentage = ((amount as number) / summary.totalExpenses) * 100;
-                            return (
-                              <div key={subcategoryId} className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div
-                                      className={`h-3 w-3 rounded-full ${getColor(index + 5)}`}
-                                    />
-                                    <span className="font-medium">
-                                      {getSubcategoryName(subcategoryId)}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-sm text-muted-foreground">
-                                      {percentage.toFixed(1)}%
-                                    </span>
-                                    <span className="font-bold">
-                                      ${(amount as number).toFixed(2)}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                                  <div
-                                    className={`h-full transition-all ${getColor(index + 5)}`}
-                                    style={{ width: `${percentage}%` }}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                ) : null}
               </div>
             )}
 

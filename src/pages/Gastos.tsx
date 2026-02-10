@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { api, Expense, ExpenseCategory, ExpenseSubcategory } from "@/lib/api";
 import { toast } from "sonner";
 import {
@@ -29,15 +29,21 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useBranch } from "@/contexts/BranchContext";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+type ViewMode = "expenses" | "categories";
 
 export default function Gastos() {
   const { selectedBranch } = useBranch();
+  const [viewMode, setViewMode] = useState<ViewMode>("expenses");
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentExpense, setCurrentExpense] = useState<Partial<Expense>>({});
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   // Category management
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
@@ -225,6 +231,24 @@ export default function Gastos() {
     )
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredExpenses.length / itemsPerPage);
+  const paginatedExpenses = filteredExpenses.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  // Reset to page 1 when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   return (
     <Layout>
       <div className="p-6 md:p-8">
@@ -235,14 +259,25 @@ export default function Gastos() {
           </p>
         </div>
 
-        <Tabs defaultValue="expenses" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="expenses">Gastos</TabsTrigger>
-            <TabsTrigger value="categories">Categorías</TabsTrigger>
-          </TabsList>
+        {/* View Mode Buttons */}
+        <div className="mb-6 flex gap-2">
+          <Button
+            variant={viewMode === "expenses" ? "default" : "outline"}
+            onClick={() => setViewMode("expenses")}
+          >
+            Gastos
+          </Button>
+          <Button
+            variant={viewMode === "categories" ? "default" : "outline"}
+            onClick={() => setViewMode("categories")}
+          >
+            Categorías
+          </Button>
+        </div>
 
-          {/* EXPENSES TAB */}
-          <TabsContent value="expenses" className="space-y-4">
+        {/* EXPENSES VIEW */}
+        {viewMode === "expenses" && (
+          <div className="space-y-4">
             <div className="flex justify-end">
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
@@ -395,7 +430,7 @@ export default function Gastos() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredExpenses.map((expense) => (
+                  {paginatedExpenses.map((expense) => (
                     <TableRow key={expense.id}>
                       <TableCell>
                         {new Date(expense.date).toLocaleDateString("es-MX")}
@@ -460,11 +495,45 @@ export default function Gastos() {
                   No se encontraron gastos
                 </div>
               )}
-            </div>
-          </TabsContent>
 
-          {/* CATEGORIES TAB */}
-          <TabsContent value="categories" className="space-y-4">
+              {/* Pagination Controls */}
+              {filteredExpenses.length > 0 && (
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
+                    {Math.min(currentPage * itemsPerPage, filteredExpenses.length)} de{" "}
+                    {filteredExpenses.length} gastos
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm">
+                      Página {currentPage} de {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* CATEGORIES VIEW */}
+        {viewMode === "categories" && (
+          <div className="space-y-4">
             <div className="flex justify-end gap-2">
               <Dialog open={isSubcategoryDialogOpen} onOpenChange={setIsSubcategoryDialogOpen}>
                 <DialogTrigger asChild>
@@ -642,8 +711,8 @@ export default function Gastos() {
                 )}
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </div>
     </Layout>
   );
