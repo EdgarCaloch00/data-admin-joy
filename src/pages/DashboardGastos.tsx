@@ -354,8 +354,8 @@ export default function DashboardGastos() {
             {/* Category/Subcategory Breakdown */}
             {summary.totalExpenses > 0 && (
               <div>
-                {/* Show subcategories if filtering by subcategory, otherwise show categories */}
-                {filterSubcategoryId !== 'all' && Object.keys(summary.subcategoryTotals || {}).length > 0 ? (
+                {/* Show subcategories if filtering by category, otherwise show categories */}
+                {filterCategoryId !== 'all' && Object.keys(summary.subcategoryTotals || {}).length > 0 ? (
                   <Card>
                     <CardHeader>
                       <CardTitle>Desglose</CardTitle>
