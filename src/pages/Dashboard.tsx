@@ -172,8 +172,7 @@ export default function Dashboard() {
                   Mostrando datos de {new Date(stats.startDate).toLocaleDateString('es-MX', { 
                     year: 'numeric', 
                     month: 'long', 
-                    day: 'numeric',
-                    timeZone: 'America/Chicago'
+                    day: 'numeric'
                   })}
                 </>
               ) : (
@@ -181,13 +180,11 @@ export default function Dashboard() {
                   Mostrando datos desde {new Date(stats.startDate).toLocaleDateString('es-MX', { 
                     year: 'numeric', 
                     month: 'long', 
-                    day: 'numeric',
-                    timeZone: 'America/Chicago'
+                    day: 'numeric'
                   })} hasta {new Date(stats.endDate).toLocaleDateString('es-MX', { 
                     year: 'numeric', 
                     month: 'long', 
-                    day: 'numeric',
-                    timeZone: 'America/Chicago'
+                    day: 'numeric'
                   })}
                 </>
               )}

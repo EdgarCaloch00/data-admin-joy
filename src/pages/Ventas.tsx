@@ -74,34 +74,23 @@ export default function Ventas() {
       sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.user?.name.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Convertir la fecha de venta a hora de México
+    // Date is already in Mexico City time from backend
     const saleDate = new Date(sale.created_at);
-    const mexicoDate = new Date(
-      saleDate.toLocaleString("en-US", { timeZone: "America/Mexico_City" })
-    );
 
-    // Convertir las fechas del filtro
+    // Parse filter dates (local time)
     let fromDate = null;
     let toDate = null;
 
     if (dateFrom) {
-      // Crear fecha con la zona horaria de México
       fromDate = new Date(dateFrom + "T00:00:00");
-      // Ajustar a UTC
-      fromDate = new Date(
-        fromDate.getTime() + fromDate.getTimezoneOffset() * 60000
-      );
     }
 
     if (dateTo) {
-      // Crear fecha con la zona horaria de México
       toDate = new Date(dateTo + "T23:59:59");
-      // Ajustar a UTC
-      toDate = new Date(toDate.getTime() + toDate.getTimezoneOffset() * 60000);
     }
 
-    const matchesDateFrom = !fromDate || mexicoDate >= fromDate;
-    const matchesDateTo = !toDate || mexicoDate <= toDate;
+    const matchesDateFrom = !fromDate || saleDate >= fromDate;
+    const matchesDateTo = !toDate || saleDate <= toDate;
     const matchesSeller =
       selectedSeller === "all" || sale.user_id === selectedSeller;
     const matchesPaymentMethod =
@@ -181,7 +170,6 @@ export default function Ventas() {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      timeZone: "America/Mexico_City",
     };
     return new Date(dateString).toLocaleString("es-MX", options);
   };
